@@ -21,6 +21,12 @@ tf.random.set_seed(seed_value)
 import os
 os.environ['PYTHONHASHSEED']=str(seed_value)
 
+action = 0
+stock = 0  # 持有
+tmp1 = -1 # 買進價
+tmp2 = -1 # 賣空價
+trend = 0 # 股票走勢，大於0代表連漲 n 天，小於 0 代表連跌
+
 def buildManyToOneModel(shape):
     model = Sequential()
     model.add(LSTM(50, input_length=shape[1], input_dim=shape[2], return_sequences=False))
@@ -56,31 +62,58 @@ def create_last_data(data, past = 7, future = 7):
     x_train = np.array(x_train)
     return x_train
 
-def manipulation(stock, predict_gap):
+
+def manipulation(stock, predict_gap, predict_price, tmp1, tmp2, trend):
     action = 0
     #tomorrow will be higher
     if predict_gap > 0:
-        if stock == 0:
-            action = -1
-            stock = -1
-        elif stock == 1:
-            action = -1
-            stock = 0
-        elif stock == -1:
-            action = 0
-    #tommor will be lower
-    if predict_gap < 0:
-        if stock == 0:
+        
+        if trend <= 0:
+            trend = 1
+        else:
+            trend = trend + 1
+        
+        if trend <= 1 and stock == 0: # 第一天漲
             action = 1
             stock = 1
-        elif stock == -1:
-            action = 1
+            tmp1 = predict_price # 紀錄買價
+        elif stock == 1 and predict_price > tmp1: # 明天價格比買價高
+            action = -1
             stock = 0
-        elif stock == -1:
-            action = 0
+            tmp1 = -1
+        elif stock == 0 and trend >= 2:
+            action = -1  # 賣空
+            stock = -1
+            tmp2 = predict_price
+    #tommor will be lower
+    if predict_gap <= 0:
+    
+        if trend >= 0:
+            trend = -1
+        else:
+            trend = trend - 1
+        
+        if trend >= -1 and stock == 0: # 第一天跌
+            action = -1  # 賣空
+            stock = -1
+            tmp2 = predict_price
+        elif stock == -1 and predict_price < tmp2:
+            action = 1   # 預測價格比賣空價低，買進
+            stock = 0
+            tmp2 = -1
+        elif stock <= 0 and trend <= -2: # 連跌大於等於 2 天且未持股
+            action = 1
+            if stock == 0:
+                tmp1 = predict_price
+                stock = 1
+            elif stock == -1:
+                tmp2 = -1
+                stock = 0
+        
     if predict_gap == 0:
         action = 0
-    return (action, stock)
+    return (action, stock, trend)
+
 
 def manipulate(stock, predict_gap):
     action = 0
@@ -178,7 +211,6 @@ if __name__ == '__main__':
     print(x_test.shape)
     print(test['open'].tolist())
     actions = []
-    stock = 0
     past = create_last_data(all_data, 4, 1)
     print(past)
     
@@ -187,14 +219,22 @@ if __name__ == '__main__':
     print(result)
     output_file = open(args.output, 'w')
     last_day = test['open'].tolist()[0]
+    
+
     for i in range(test_length-1):
+        #依上次做動作更新值
+        if action == 1:
+            tmp1 = test['open'].tolist()[i]
+        elif action == -1:
+            tmp2 = test['open'].tolist()[i]
+        
         tmp = x_test[i].reshape(1, 4, -1)
         print(tmp)
         tmp = regressor5.predict(tmp)
         tmp = tmp[0][0]
         print(tmp)
         print(test['open'].tolist()[i+1])
-        action, stock = manipulation(stock, tmp-test['open'].tolist()[i])
+        action, stock, trend = manipulation(stock, tmp-test['open'].tolist()[i], tmp, tmp1, tmp2, trend)
         actions.append(action)
         output_file.write(str(action))
         if i < test_length-2:

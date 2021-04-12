@@ -231,43 +231,57 @@ earn 7 6.0999999999999375
 * manipulation 股票操作
 若未來股票漲則購買，反之賣出，當然也要考慮現在所擁有的股票數目。
 ```python
-def manipulate(stock, predict_gap):
+def manipulation(stock, predict_gap, predict_price, tmp1, tmp2):
     action = 0
-    if stock == 0:
-        #predict will get higher
-        if predict_gap > 0:
+    #tomorrow will be higher
+    if predict_gap > 0:
+        
+        if trend <= 0:
+            trend = 1
+        else:
+            trend = trend + 1
+        
+        if trend <= 1 and stock == 0: # 第一天漲
             action = 1
             stock = 1
-        elif predict_gap < 0:
+            tmp1 = predict_price # 紀錄買價
+        elif stock == 1 and predict_price > tmp1: # 明天價格比買價高
             action = -1
+            stock = 0
+            tmp1 = -1
+        elif stock == 0 and trend >= 2:
+            action = -1  # 賣空
             stock = -1
+            tmp2 = predict_price
+    #tommor will be lower
+    if predict_gap <= 0:
+    
+        if trend >= 0:
+            trend = -1
         else:
-            action = 0
+            trend = trend - 1
+        
+        if trend >= -1 and stock == 0: # 第一天跌
+            action = -1  # 賣空
+            stock = -1
+            tmp2 = predict_price
+        elif stock == -1 and predict_price < tmp2:
+            action = 1   # 預測價格比賣空價低，買進
             stock = 0
-    elif stock == 1:
-        if predict_gap > 0:
-            action = 0
-            stock = 1
-        elif predict_gap < 0:
-            action = -1
-            stock = 0
-        else:
-            action = 0
-            stock = 1
-    elif stock == -1:
-        if predict_gap > 0:
+            tmp2 = -1
+        elif stock <= 0 and trend <= -2: # 連跌大於等於 2 天且未持股
             action = 1
-            stock = 0
-        elif predict_gap < 0:
-            action = 0
-            stock = -1
-        else:
-            action = 0
-            stock = -1
-    else:
-        print("manipulate error")
-        return None
+            if stock == 0:
+                tmp1 = predict_price
+                stock = 1
+            elif stock == -1:
+                tmp2 = -1
+                stock = 0
+        
+    if predict_gap == 0:
+        action = 0
     return (action, stock)
+
 
 ```
 觀察最後，決定使用往前看4天的預測後面的長遞來做操作。

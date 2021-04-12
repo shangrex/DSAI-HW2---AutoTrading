@@ -23,7 +23,7 @@ os.environ['PYTHONHASHSEED']=str(seed_value)
 def buildManyToOneModel(shape):
     model = Sequential()
     model.add(LSTM(50, input_length=shape[1], input_dim=shape[2], return_sequences=False))
-    model.add(Dense(units = 10))
+    model.add(Dense(units = 100))
     model.add(Dropout(0.2))
     model.add(Dense(units = 10))
     model.add(Dropout(0.2))
@@ -126,12 +126,7 @@ if __name__ == '__main__':
     callback = EarlyStopping(monitor="loss", patience=400, verbose=1, mode="auto")
     regressor5.fit(x_train, y_train, epochs = 10000, callbacks=[callback])
 
-    # The following part is an example.
-    # You can modify it at will.
-    # training_data = load_data(args.training)
-    # trader = Trader()
-    # trader.train(training_data)
-    
+    #testing
     test = pd.read_csv('testing.csv', names=['open', 'high', 'low', 'close'])
     test_length = len(test)
     print(test_length)
@@ -156,13 +151,5 @@ if __name__ == '__main__':
             output_file.write('\n')
     
     output_file.close()
-    # with open(args.output, 'w') as output_file:
-    #     for row in testing_data:
-    #         # We will perform your action as the open price in the next day.
-    #         action = trader.predict_action(row)
-    #         output_file.write(action)
-
-    #         # this is your option, you can leave it empty.
-    #         trader.re_training(i)
 
     regressor5.save('4')

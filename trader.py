@@ -53,6 +53,7 @@ def manipulate(stock, predict_gap):
         if predict_gap > 0:
             action = 1
             stock = 1
+        #predict lower and short one unit
         elif predict_gap < 0:
             action = -1
             stock = -1
@@ -60,9 +61,11 @@ def manipulate(stock, predict_gap):
             action = 0
             stock = 0
     elif stock == 1:
+        #predict higher but nothing change
         if predict_gap > 0:
             action = 0
             stock = 1
+        #predict lower and short one unit
         elif predict_gap < 0:
             action = -1
             stock = 0
@@ -70,9 +73,11 @@ def manipulate(stock, predict_gap):
             action = 0
             stock = 1
     elif stock == -1:
+        #predict higher and buy one unit back
         if predict_gap > 0:
             action = 1
             stock = 0
+        #predict lower and still short 
         elif predict_gap < 0:
             action = 0
             stock = -1

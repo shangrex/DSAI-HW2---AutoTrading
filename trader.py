@@ -8,6 +8,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers import Dropout
+from tensorflow import keras
 import math
 from keras.callbacks import EarlyStopping
 seed_value = 1234567899
@@ -45,6 +46,41 @@ def create_data(data, past = 7, future = 7):
     x_train = np.array(x_train)
     y_train = np.array(y_train)
     return x_train, y_train
+
+def create_last_data(data, past = 7, future = 7):
+    x_train = []
+    t = data.iloc[-past:][['open', 'high', 'low', 'close']]
+
+    x_train.append(t)
+
+    x_train = np.array(x_train)
+    return x_train
+
+def manipulation(stock, predict_gap):
+    action = 0
+    #tomorrow will be higher
+    if predict_gap > 0:
+        if stock == 0:
+            action = -1
+            stock = -1
+        elif stock == 1:
+            action = -1
+            stock = 0
+        elif stock == -1:
+            action = 0
+    #tommor will be lower
+    if predict_gap < 0:
+        if stock == 0:
+            action = 1
+            stock = 1
+        elif stock == -1:
+            action = 1
+            stock = 0
+        elif stock == -1:
+            action = 0
+    if predict_gap == 0:
+        action = 0
+    return (action, stock)
 
 def manipulate(stock, predict_gap):
     action = 0
@@ -122,7 +158,7 @@ if __name__ == '__main__':
                         help='output file name')
     args = parser.parse_args()
     
-    train = pd.read_csv('training.csv', names=['open', 'high', 'low', 'close'])
+    train = pd.read_csv(args.training, names=['open', 'high', 'low', 'close'])
 
 
     #training
@@ -130,31 +166,39 @@ if __name__ == '__main__':
     regressor5 = buildManyToOneModel(x_train.shape)
     callback = EarlyStopping(monitor="loss", patience=400, verbose=1, mode="auto")
     regressor5.fit(x_train, y_train, epochs = 10000, callbacks=[callback])
+    # regressor5 = keras.models.load_model('4')
 
     #testing
-    test = pd.read_csv('testing.csv', names=['open', 'high', 'low', 'close'])
+    test = pd.read_csv(args.testing, names=['open', 'high', 'low', 'close'])
     test_length = len(test)
-    print(test_length)
     all_data = train.append(test)
     x_test, y_test = create_data(all_data, 4, 1)
-    x_test = x_test[-test_length:]
-    y_test = y_test[-test_length:]
-    # print(x_test)
-    # print(y_test)
+    x_test = x_test[-test_length+1:]
+    y_test = y_test[-test_length+1:]
+    print(x_test.shape)
+    print(test['open'].tolist())
     actions = []
     stock = 0
-
+    past = create_last_data(all_data, 4, 1)
+    print(past)
+    
     result = np.array([])
     result = np.append(result, lstm_model(x_test, y_test, regressor5))
+    print(result)
     output_file = open(args.output, 'w')
-
+    last_day = test['open'].tolist()[0]
     for i in range(test_length-1):
-        action, stock = manipulate(stock, result[i+1]-result[i])
+        tmp = x_test[i].reshape(1, 4, -1)
+        print(tmp)
+        tmp = regressor5.predict(tmp)
+        tmp = tmp[0][0]
+        print(tmp)
+        print(test['open'].tolist()[i+1])
+        action, stock = manipulation(stock, tmp-test['open'].tolist()[i])
         actions.append(action)
         output_file.write(str(action))
         if i < test_length-2:
             output_file.write('\n')
-    
     output_file.close()
 
-    regressor5.save('4')
+    # regressor5.save('4')
